@@ -45,7 +45,7 @@ jobs:
     name: SonarQube / SonarCloud Analysis
     runs-on: ubuntu-latest
     needs: test
-    if: always()
+    if: secrets.SONAR_TOKEN != ''
 
     steps:
       - name: Checkout Repository

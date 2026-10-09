@@ -610,11 +610,10 @@ with tab2:
         # Pre-filter features if Kab/Kota or Reko filter is active
         valid_kode_set = set(df_reko["KODE_KEC"].astype(str).str.strip())
         
-        filtered_features = []
-        for feat in kec_data["features"]:
-            k_code = str(feat["properties"].get("KODE_KEC", "")).strip()
-            if k_code in valid_kode_set:
-                filtered_features.append(feat)
+        filtered_features = [
+            feat for feat in kec_data["features"]
+            if str(feat["properties"].get("KODE_KEC", "")).strip() in valid_kode_set
+        ]
 
         geojson_tab2 = {
             "type": "FeatureCollection",

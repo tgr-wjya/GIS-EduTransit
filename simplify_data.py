@@ -5,6 +5,16 @@ import os
 import pandas as pd
 from shapely.geometry import mapping, shape
 
+COLOR_REKO = {
+    2: "#10B981",  # Hijau - Sangat Direkomendasikan
+    1: "#F59E0B",  # Kuning - Cukup Direkomendasikan
+    0: "#EF4444",  # Merah - Tidak Direkomendasikan
+}
+
+
+def get_color_reko(pred):
+    return COLOR_REKO.get(pred, "#EF4444")
+
 
 def round_coords(coords):
     if isinstance(coords, (list, tuple)):

@@ -1,3 +1,4 @@
+import html
 import json
 import os
 import time
@@ -11,6 +12,8 @@ from branca.element import MacroElement
 from jinja2 import Template
 from sklearn.ensemble import RandomForestClassifier
 from streamlit_folium import st_folium
+
+from simplify_data import get_color_reko
 
 # Record script execution start time for server latency measurement
 t_start = time.perf_counter()
@@ -326,8 +329,8 @@ with tab1:
         for s in stat_data["features"]:
             coords = s["geometry"]["coordinates"]
             props  = s["properties"]
-            mode   = props.get("mode", "KRL")
-            name   = props.get("name", "Stasiun")
+            mode   = html.escape(str(props.get("mode", "KRL")))
+            name   = html.escape(str(props.get("name", "Stasiun")))
 
             color = "#2563EB"
             if mode == "MRT":
@@ -361,7 +364,7 @@ with tab1:
         for bs in tj_data["features"]:
             coords = bs["geometry"]["coordinates"]
             props  = bs["properties"]
-            name   = props.get("name", "Halte")
+            name   = html.escape(str(props.get("name", "Halte")))
 
             popup_html = f"""
             <div style='font-family: sans-serif; font-size: 12px; line-height: 1.4; width: 200px;'>
@@ -393,18 +396,23 @@ with tab1:
         weight   = 3    if is_selected else 1.5
         b_color  = "#FACC15" if is_selected else border_color
 
+        c_name = html.escape(str(row["name"]))
+        c_status = html.escape(str(row["status"]))
+        c_akred = html.escape(str(row["akreditasi"]))
+        c_kat = html.escape(str(row["kategori"]))
+
         popup_html = f"""
         <table style='font-family: sans-serif; font-size: 12px; border-collapse: collapse; width: 250px; border: 1px solid #E5E7EB;'>
             <tr style='background-color: #1E3A8A; color: white;'>
-                <th colspan='2' style='padding: 6px; text-align: left;'>{row['name']}</th>
+                <th colspan='2' style='padding: 6px; text-align: left;'>{c_name}</th>
             </tr>
             <tr>
                 <td style='padding: 5px; border: 1px solid #E5E7EB; font-weight: bold; background-color: #F9FAFB;'>Status</td>
-                <td style='padding: 5px; border: 1px solid #E5E7EB;'>{row['status']}</td>
+                <td style='padding: 5px; border: 1px solid #E5E7EB;'>{c_status}</td>
             </tr>
             <tr>
                 <td style='padding: 5px; border: 1px solid #E5E7EB; font-weight: bold; background-color: #F9FAFB;'>Akreditasi</td>
-                <td style='padding: 5px; border: 1px solid #E5E7EB;'>{row['akreditasi']}</td>
+                <td style='padding: 5px; border: 1px solid #E5E7EB;'>{c_akred}</td>
             </tr>
             <tr>
                 <td style='padding: 5px; border: 1px solid #E5E7EB; font-weight: bold; background-color: #F9FAFB;'>Mahasiswa</td>
@@ -412,7 +420,7 @@ with tab1:
             </tr>
             <tr>
                 <td style='padding: 5px; border: 1px solid #E5E7EB; font-weight: bold; background-color: #F9FAFB;'>Aksesibilitas</td>
-                <td style='padding: 5px; border: 1px solid #E5E7EB; color: {color}; font-weight: bold;'>{row['kategori']}</td>
+                <td style='padding: 5px; border: 1px solid #E5E7EB; color: {color}; font-weight: bold;'>{c_kat}</td>
             </tr>
             <tr>
                 <td style='padding: 5px; border: 1px solid #E5E7EB; font-weight: bold; background-color: #F9FAFB;'>Jarak Stasiun</td>
@@ -493,7 +501,10 @@ with tab1:
             if not match.empty:
                 r = match.iloc[0]
                 kat = r["kategori"]
-                status_full = "Perguruan Tinggi Negeri (PTN)" if r["status"] == "PTN" else "Perguruan Tinggi Swasta (PTS)"
+                name_esc = html.escape(str(r["name"]))
+                status_raw = "Perguruan Tinggi Negeri (PTN)" if r["status"] == "PTN" else "Perguruan Tinggi Swasta (PTS)"
+                status_full = html.escape(status_raw)
+                akred_esc = html.escape(str(r["akreditasi"]))
                 stat_dist = r["dist_stat"]
                 tj_dist   = r["dist_tj"]
                 if kat == "Transit-Oriented":
@@ -501,7 +512,7 @@ with tab1:
                     body = f"Kampus ini tergolong <em>Transit-Oriented</em> karena berada dalam jangkauan ke {nearest_desc}, memberikan efisiensi mobilitas bagi <strong>{r['mahasiswa']:,} mahasiswa</strong>."
                 else:
                     body = f"Kampus ini berstatus <em>Transit-Isolated</em> dengan jarak <strong>{stat_dist:,.0f} m</strong> ke stasiun kereta dan <strong>{tj_dist:,.0f} m</strong> ke halte TransJakarta, membutuhkan rute feeder untuk <strong>{r['mahasiswa']:,} mahasiswa</strong>."
-                return f"<div class='analysis-card'><strong style='font-size:15px;'>Analisis Kampus: {r['name']}</strong><br>Status: {status_full} | Akreditasi: {r['akreditasi']} | Mahasiswa: {r['mahasiswa']:,} orang<hr style='border:0; border-top:1px solid #334155; margin:6px 0;'>{body}</div>"
+                return f"<div class='analysis-card'><strong style='font-size:15px;'>Analisis Kampus: {name_esc}</strong><br>Status: {status_full} | Akreditasi: {akred_esc} | Mahasiswa: {r['mahasiswa']:,} orang<hr style='border:0; border-top:1px solid #334155; margin:6px 0;'>{body}</div>"
 
         total = len(df_filt)
         if total == 0:
@@ -597,14 +608,6 @@ with tab2:
 
     # Create Folium Choropleth Map for Tab 2
     m2 = folium.Map(location=[-6.25, 106.84], zoom_start=10, tiles="CartoDB positron", control_scale=True)
-
-    # Color mapping for Pred_Reko
-    def get_color_reko(pred):
-        if pred == 2:
-            return "#10B981"  # Hijau - Sangat Direkomendasikan
-        elif pred == 1:
-            return "#F59E0B"  # Kuning - Cukup Direkomendasikan
-        return "#EF4444"      # Merah - Tidak Direkomendasikan
 
     if kec_data:
         # Pre-filter features if Kab/Kota or Reko filter is active
